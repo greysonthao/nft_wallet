@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BlacklistResponse",
+  "type": "object",
+  "required": [
+    "blacklisted_addresses"
+  ],
+  "properties": {
+    "blacklisted_addresses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

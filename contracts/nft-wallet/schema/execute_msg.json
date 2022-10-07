@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "required": [
+            "admin"
+          ],
+          "properties": {
+            "admin": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "receive_nft"
+      ],
+      "properties": {
+        "receive_nft": {
+          "$ref": "#/definitions/Cw721ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw_nft"
+      ],
+      "properties": {
+        "withdraw_nft": {
+          "type": "object",
+          "required": [
+            "contract",
+            "token_id"
+          ],
+          "properties": {
+            "contract": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "submit_offer"
+      ],
+      "properties": {
+        "submit_offer": {
+          "type": "object",
+          "required": [
+            "cw721_contract",
+            "nft_owner",
+            "token_id"
+          ],
+          "properties": {
+            "cw721_contract": {
+              "type": "string"
+            },
+            "nft_owner": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw_offer"
+      ],
+      "properties": {
+        "withdraw_offer": {
+          "type": "object",
+          "required": [
+            "cw721_contract",
+            "token_id"
+          ],
+          "properties": {
+            "cw721_contract": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_to_blacklist"
+      ],
+      "properties": {
+        "add_to_blacklist": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_from_blacklist"
+      ],
+      "properties": {
+        "remove_from_blacklist": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "accept_offer"
+      ],
+      "properties": {
+        "accept_offer": {
+          "type": "object",
+          "required": [
+            "bidder_address",
+            "cw721_contract",
+            "token_id"
+          ],
+          "properties": {
+            "bidder_address": {
+              "type": "string"
+            },
+            "cw721_contract": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Cw721ReceiveMsg": {
+      "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "msg",
+        "sender",
+        "token_id"
+      ],
+      "properties": {
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

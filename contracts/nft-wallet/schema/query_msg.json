@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "cw721_deposits"
+      ],
+      "properties": {
+        "cw721_deposits": {
+          "type": "object",
+          "required": [
+            "address",
+            "contract"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "contract": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "offers"
+      ],
+      "properties": {
+        "offers": {
+          "type": "object",
+          "required": [
+            "cw721_contract",
+            "owner"
+          ],
+          "properties": {
+            "cw721_contract": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_nft_contracts"
+      ],
+      "properties": {
+        "get_nft_contracts": {
+          "type": "object",
+          "required": [
+            "owner"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_blacklist"
+      ],
+      "properties": {
+        "get_blacklist": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
