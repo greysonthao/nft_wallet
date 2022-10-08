@@ -3,9 +3,7 @@ use crate::msg::{
     Cw721DepositResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, NftContractsResponse,
     OfferResponse, QueryMsg,
 };
-use crate::state::{
-    Cw721Deposit, NftContracts, Offer, ADMIN, BLACKLIST, CW721_DEPOSITS, NFT_CONTRACTS, OFFERS,
-};
+use crate::state::{Cw721Deposit, Offer, ADMIN, BLACKLIST, CW721_DEPOSITS, OFFERS};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -83,11 +81,9 @@ pub fn execute_receive_cw721(
     cw721_msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
     match from_binary(&cw721_msg.msg) {
-        Ok(Cw721HookMsg::Deposit {
-            /* owner,
-            token_id, */
-            ask,
-        }) => execute_cw721_deposit(deps, info, cw721_msg.sender, cw721_msg.token_id, ask),
+        Ok(Cw721HookMsg::Deposit { ask }) => {
+            execute_cw721_deposit(deps, info, cw721_msg.sender, cw721_msg.token_id, ask)
+        }
         _ => Err(ContractError::CustomError {
             val: "Invalid Cw721HookMsg".to_string(),
         }),
@@ -104,18 +100,10 @@ pub fn execute_cw721_deposit(
     let contract_addr = info.sender.clone().to_string();
 
     match CW721_DEPOSITS.load(deps.storage, (&owner, &contract_addr, &token_id)) {
-        Ok(mut deposit) => {
-            deposit.owner = owner.clone();
-            deposit.token_id = token_id.clone();
-            deposit.ask = ask.clone();
-            CW721_DEPOSITS.save(deps.storage, (&owner, &contract_addr, &token_id), &deposit)?;
-
-            let nft_contract = NftContracts {
-                owner: owner.clone(),
-                cw721_contract: contract_addr.clone(),
-            };
-
-            NFT_CONTRACTS.save(deps.storage, &owner, &nft_contract)?;
+        Ok(_) => {
+            return Err(ContractError::CustomError {
+                val: "Already deposited".to_string(),
+            })
         }
         Err(_) => {
             let deposit = Cw721Deposit {
@@ -126,19 +114,13 @@ pub fn execute_cw721_deposit(
             };
             CW721_DEPOSITS.save(deps.storage, (&owner, &contract_addr, &token_id), &deposit)?;
 
-            let nft_contract = NftContracts {
-                owner: owner.clone(),
-                cw721_contract: contract_addr.clone(),
-            };
-
-            NFT_CONTRACTS.save(deps.storage, &owner, &nft_contract)?;
+            Ok(Response::new()
+                .add_attribute("execute", "cw721_deposit")
+                .add_attribute("owner", owner)
+                .add_attribute("contract", contract_addr)
+                .add_attribute("ask_amount", ask.to_string()))
         }
     }
-    Ok(Response::new()
-        .add_attribute("execute", "cw20_deposit")
-        .add_attribute("owner", owner)
-        .add_attribute("contract", contract_addr)
-        .add_attribute("ask_amount", ask.to_string()))
 }
 
 pub fn execute_withdraw_cw721(
@@ -157,7 +139,7 @@ pub fn execute_withdraw_cw721(
                 (&info.sender.clone().to_string(), &cw721_contract, &token_id),
             );
 
-            NFT_CONTRACTS.remove(deps.storage, &info.sender.to_string());
+            /*  NFT_CONTRACTS.remove(deps.storage, &info.sender.to_string()); */
 
             let exec_msg = nft::contract::ExecuteMsg::TransferNft {
                 recipient: info.sender.clone().to_string(),
@@ -284,14 +266,19 @@ pub fn execute_accept_offer(
                 msg: to_binary(&exec_msg)?,
                 funds: vec![],
             };
+
+            //TO DO: SEND ALL OTHER BIDDERS THEIR MONEY BACK IF THE NFT IS SOLD TO SOMEONE ELSE
+            //IS THIS POSSIBLE?
+            //POSSIBLE ROUTE: 1) QUERY ALL OFFERS 2) GET ADDR, AMOUNT 3) SEND BANKMSG TO THOSE ADDRESSES
+
             //remove offer from OFFERS
             OFFERS.remove(deps.storage, (&bidder_address, &cw721_contract, &token_id));
 
             //remove cw721 deposit from CW721_DEPOSITS
             CW721_DEPOSITS.remove(deps.storage, (&sender, &cw721_contract, &token_id));
 
-            NFT_CONTRACTS.remove(deps.storage, &info.sender.to_string());
-
+            /*             NFT_CONTRACTS.remove(deps.storage, &info.sender.to_string());
+             */
             Ok(Response::new()
                 .add_attribute("execute", "accept_offer")
                 .add_attribute("cw721_contract", cw721_contract)

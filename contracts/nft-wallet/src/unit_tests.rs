@@ -88,7 +88,9 @@ mod tests {
     fn test_deposit_cw721_and_withdraw() {
         let mut deps = mock_dependencies();
         let _res = proper_instantiate(deps.as_mut()).unwrap();
-        let _res = execute_cw721_deposit(deps.as_mut()).unwrap();
+        let res = execute_cw721_deposit(deps.as_mut()).unwrap();
+
+        println!("RESY: {:?}", res);
 
         let msg = QueryMsg::Cw721Deposits {
             address: "juno1pqn6edrdmr28ekdjv5j2u9uvh6m32tl306kh5h".to_string(),
@@ -96,6 +98,7 @@ mod tests {
         };
         let res = query(deps.as_ref(), mock_env(), msg).unwrap();
         let res: Cw721DepositResponse = from_binary(&res).unwrap();
+
         assert_eq!(
             res.deposits[0].owner,
             "juno1pqn6edrdmr28ekdjv5j2u9uvh6m32tl306kh5h"
