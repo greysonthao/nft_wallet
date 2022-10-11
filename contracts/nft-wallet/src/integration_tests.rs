@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
 
-    use crate::msg::{Cw721DepositResponse, Cw721HookMsg, ExecuteMsg, OfferResponse, QueryMsg};
+    use crate::msg::{
+        BlacklistResponse, Cw721DepositResponse, Cw721HookMsg, ExecuteMsg, OfferResponse, QueryMsg,
+    };
 
     use anyhow::Error;
     use cosmwasm_std::to_binary;
@@ -18,6 +20,7 @@ mod tests {
     const DENOM: &str = "TNT";
     const AMOUNT: Uint128 = Uint128::new(100);
     const BIDDER: &str = "juno1pqn6edrdmr28ekdjv5j2u9uvh6m32tl306kh5h";
+    const BAD_BIDDER: &str = "juno1tr8fflkqmfqp7tclrgcl0hucdzn5prm8xj3d5h";
     const TOKEN_ID: &str = "token_1234";
 
     pub fn contract_cw721() -> Box<dyn Contract<Empty>> {
@@ -61,6 +64,17 @@ mod tests {
                 .init_balance(
                     storage,
                     &Addr::unchecked(BIDDER.to_string()),
+                    init_amount.clone(),
+                )
+                .unwrap();
+        });
+
+        app.init_modules(|router, _, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &Addr::unchecked(BAD_BIDDER.to_string()),
                     init_amount.clone(),
                 )
                 .unwrap();
@@ -269,7 +283,85 @@ mod tests {
             .unwrap();
         assert_eq!(res.owner, nft_wallet_addr.clone());
 
-        //SUBMIT OFFER 1
+        //ADD BAD_BIDDER TO BLACKLIST
+        let msg = ExecuteMsg::AddToBlacklist {
+            address: BAD_BIDDER.to_string(),
+        };
+
+        let _res = suite
+            .app
+            .execute_contract(
+                Addr::unchecked(suite.owner.clone()),
+                nft_wallet_addr.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+
+        //QUERY BLACKLIST. SHOULD RETURN BAD_BIDDER
+        let msg = QueryMsg::GetBlacklist {};
+
+        let res: BlacklistResponse = suite
+            .app
+            .wrap()
+            .query_wasm_smart(nft_wallet_addr.clone().to_string(), &msg)
+            .unwrap();
+
+        //println!("BLACKLIST: {:?}", res);
+
+        assert_eq!(res.blacklisted_addresses[0], BAD_BIDDER.to_string());
+
+        //SUBMIT OFFER AS BAD_BIDDER. SHOULD ERROR
+        let msg = ExecuteMsg::SubmitOffer {
+            nft_owner: suite.owner.clone().to_string(),
+            cw721_contract: nft_contract_addr.clone().to_string(),
+            token_id: TOKEN_ID.to_string(),
+        };
+
+        let send_funds = vec![Coin {
+            denom: DENOM.to_string(),
+            amount: Uint128::new(1),
+        }];
+
+        let res = suite.app.execute_contract(
+            Addr::unchecked(BAD_BIDDER.to_string()),
+            Addr::unchecked(nft_wallet_addr.clone().to_string()),
+            &msg,
+            &send_funds,
+        );
+
+        match res {
+            Err(_) => {}
+            _ => panic!("Should error here"),
+        }
+
+        //REMOVE BAD_BIDDER FROM BLACKLIST
+        let msg = ExecuteMsg::RemoveFromBlacklist {
+            address: BAD_BIDDER.to_string(),
+        };
+
+        let _res = suite
+            .app
+            .execute_contract(
+                Addr::unchecked(suite.owner.clone()),
+                nft_wallet_addr.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+
+        //QUERY BLACKLIST. SHOULD ERROR
+        let msg = QueryMsg::GetBlacklist {};
+
+        let res: BlacklistResponse = suite
+            .app
+            .wrap()
+            .query_wasm_smart(nft_wallet_addr.clone().to_string(), &msg)
+            .unwrap();
+
+        assert_eq!(res.blacklisted_addresses.len(), 0);
+
+        //SUBMIT OFFER 1 FROM BIDDER
         let msg = ExecuteMsg::SubmitOffer {
             nft_owner: suite.owner.clone().to_string(),
             cw721_contract: nft_contract_addr.clone().to_string(),

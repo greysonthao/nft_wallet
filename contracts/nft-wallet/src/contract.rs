@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    Cw721DepositResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg, NftContractsResponse,
-    OfferResponse, QueryMsg,
+    BlacklistResponse, Cw721DepositResponse, Cw721HookMsg, ExecuteMsg, InstantiateMsg,
+    NftContractsResponse, OfferResponse, QueryMsg,
 };
 use crate::state::{Cw721Deposit, Offer, ADMIN, BLACKLIST, CW721_DEPOSITS, OFFERS};
 #[cfg(not(feature = "library"))]
@@ -303,7 +303,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             cw721_contract,
         } => to_binary(&try_query_offers(deps, owner, cw721_contract)?),
         QueryMsg::GetNftContracts { owner } => to_binary(&try_query_nft_contracts(deps, owner)?),
-        QueryMsg::GetBlacklist {} => todo!(),
+        QueryMsg::GetBlacklist {} => to_binary(&try_query_blacklist(deps)?),
     }
 }
 
@@ -388,4 +388,12 @@ pub fn try_query_nft_contracts(deps: Deps, address: String) -> StdResult<NftCont
     }
 
     Ok(NftContractsResponse { nft_contracts })
+}
+
+pub fn try_query_blacklist(deps: Deps) -> StdResult<BlacklistResponse> {
+    let blacklisted_addresses = BLACKLIST.query_hooks(deps)?.hooks;
+
+    Ok(BlacklistResponse {
+        blacklisted_addresses,
+    })
 }

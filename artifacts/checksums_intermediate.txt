@@ -1,0 +1,2 @@
+b1cab3d158c4158cd9cc53e27a7366aa94dfded090290693e916a673a6478833  target/wasm32-unknown-unknown/release/nft.wasm
+0c4e18dffcd5a2617647d8a8208238674c011a86d801109c286cfdfae09dd1ac  target/wasm32-unknown-unknown/release/nft_wallet.wasm
