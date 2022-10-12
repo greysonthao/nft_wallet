@@ -4,6 +4,7 @@ import {
   SigningCosmWasmClient,
   GasPrice,
   coin,
+  toBinary,
 } from "cosmwasm";
 import * as fs from "fs";
 require("dotenv").config();
@@ -257,7 +258,7 @@ describe("CosmWasm Tests", () => {
     console.log("RES: ", res);
   }).timeout(50000);
 
-  it("Deposit NFT to nft wallet", async () => {
+  xit("Deposit NFT #1 to nft wallet", async () => {
     let gas = GasPrice.fromString("0.025ujunox");
 
     const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
@@ -270,32 +271,162 @@ describe("CosmWasm Tests", () => {
       { gasPrice: gas }
     );
 
-    let ask = [coin(2000000, "ujunox")];
+    let ask = coin(2000000, "ujunox");
 
-    /* let res = await client.execute(
-      sender_addr,
-      nft_contract_addr,
-      { send_nft: { contract: nft_contract_addr, msg: receive:{???}, token_id: "KB #1" } },
-      "auto",
-      undefined,
-      opp_wager
-    ); */
+    let cw721_hook_msg = {
+      deposit: {
+        ask: ask,
+      },
+    };
+
+    let msg = {
+      send_nft: {
+        contract: nft_wallet_addr,
+        msg: toBinary(cw721_hook_msg),
+        token_id: "KB #1",
+      },
+    };
+
+    let res = await client.execute(sender_addr, nft_contract_addr, msg, "auto");
 
     console.log("RES: ", res);
   }).timeout(50000);
 
-  xit("Query for balance in contract", async () => {
+  xit("Query for NFT #1 in NFT wallet contract", async () => {
     const client = await CosmWasmClient.connect(rpcEndpoint);
 
-    let res = await client.queryContractSmart(contract_addr, {
-      get_game_by_host_and_opponent: {
-        host: sender_addr,
-        opponent: sender_addr_2,
-      },
+    let res = await client.queryContractSmart(nft_wallet_addr, {
+      cw721_deposits: { address: sender_addr, contract: nft_contract_addr },
     });
 
-    console.log("RES: ", res.games[0].host_wager);
+    console.log("RES: ", res);
   }).timeout(50000);
+
+  xit("Add the sender addr 2 to the blacklist", async () => {
+    let gas = GasPrice.fromString("0.025ujunox");
+
+    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
+      prefix: "juno",
+    });
+
+    const client = await SigningCosmWasmClient.connectWithSigner(
+      rpcEndpoint,
+      wallet,
+      { gasPrice: gas }
+    );
+
+    let res = await client.execute(
+      sender_addr,
+      nft_wallet_addr,
+      { add_to_blacklist: { address: sender_addr_2 } },
+      "auto"
+    );
+
+    console.log("RES: ", res);
+  }).timeout(5000);
+
+  xit("Query for blacklist addresses", async () => {
+    const client = await CosmWasmClient.connect(rpcEndpoint);
+
+    let res = await client.queryContractSmart(nft_wallet_addr, {
+      get_blacklist: {},
+    });
+
+    console.log("RES: ", res);
+  }).timeout(50000);
+
+  xit("Submit offer from Sender Addr 2.", async () => {
+    let gas = GasPrice.fromString("0.025ujunox");
+
+    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic_2, {
+      prefix: "juno",
+    });
+
+    const client = await SigningCosmWasmClient.connectWithSigner(
+      rpcEndpoint,
+      wallet,
+      { gasPrice: gas }
+    );
+
+    let res = await client.execute(
+      sender_addr_2,
+      nft_wallet_addr,
+      {
+        submit_offer: {
+          nft_owner: sender_addr,
+          token_id: "KB #1",
+          cw721_contract: nft_contract_addr,
+        },
+      },
+      "auto",
+      undefined,
+      [coin(2000000, "ujunox")]
+    );
+
+    console.log("RES: ", res);
+  }).timeout(50000);
+
+  xit("Remove sender addr 2 from the blacklist", async () => {
+    let gas = GasPrice.fromString("0.025ujunox");
+
+    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
+      prefix: "juno",
+    });
+
+    const client = await SigningCosmWasmClient.connectWithSigner(
+      rpcEndpoint,
+      wallet,
+      { gasPrice: gas }
+    );
+
+    let res = await client.execute(
+      sender_addr,
+      nft_wallet_addr,
+      { remove_from_blacklist: { address: sender_addr_2 } },
+      "auto"
+    );
+
+    console.log("RES: ", res);
+  }).timeout(5000);
+
+  xit("Query for offers", async () => {
+    const client = await CosmWasmClient.connect(rpcEndpoint);
+
+    let res = await client.queryContractSmart(nft_wallet_addr, {
+      offers: { owner: sender_addr_2, cw721_contract: nft_contract_addr },
+    });
+
+    console.log("RES: ", res);
+  }).timeout(50000);
+
+  xit("Accept sender addr 2 offer", async () => {
+    let gas = GasPrice.fromString("0.025ujunox");
+
+    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
+      prefix: "juno",
+    });
+
+    const client = await SigningCosmWasmClient.connectWithSigner(
+      rpcEndpoint,
+      wallet,
+      { gasPrice: gas }
+    );
+
+    let res = await client.execute(
+      sender_addr,
+      nft_wallet_addr,
+      {
+        accept_offer: {
+          bidder_address: sender_addr_2,
+          cw721_contract: nft_contract_addr,
+          token_id: "KB #1",
+        },
+      },
+      "auto"
+    );
+
+    console.log("RES: ", res);
+  }).timeout(5000);
 
   xit("Migrate the contract", async () => {
     let gas = GasPrice.fromString("0.025ujunox");
