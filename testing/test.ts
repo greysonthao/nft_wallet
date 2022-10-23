@@ -21,9 +21,9 @@ const sender_addr_2 = process.env.SENDER_2;
 const mnemonic_2 = process.env.MNEMONIC_2;
 
 const nft_contract_addr =
-  "juno1ge45r24h4a7730u969x8cqnd0087lan76keseznwjceutf3tp4hsx8nuch";
+  "juno12u32yr0cnxwq7zvmy4vg6lwpmsjf23aj64x2myc426a4e4e00t6q4wpcf0";
 const nft_wallet_addr =
-  "juno12antxk7g6ktkatsl6l0lz5f7xjch23r5h0zvjw8m6p4t5xuavnmsfm3jy8";
+  "juno13lapqjghrr7r0h0a4jmnjxf64vr63v6kzz4mpranhclzrwnhr9psczl9yk";
 
 describe("CosmWasm Tests", () => {
   /* xit("Generate a wallet", async () => {
@@ -57,28 +57,10 @@ describe("CosmWasm Tests", () => {
     console.log("WALLET: ", await wallet.getAccounts());
   }).timeout(50000);
 
-  xit("Upload nft contract to Juno testnet", async () => {
-    let gas = GasPrice.fromString("0.025ujunox");
-
-    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
-      prefix: "juno",
-    });
-
-    const client = await SigningCosmWasmClient.connectWithSigner(
-      rpcEndpoint,
-      wallet,
-      { gasPrice: gas }
-    );
-
-    let res = await client.upload(sender_addr, nft_contract_wasm, "auto");
-
-    console.log("RES: ", res);
-  }).timeout(50000);
-
   xit("Query for balance in wallet", async () => {
     const client = await CosmWasmClient.connect(rpcEndpoint);
 
-    let res = await client.getBalance(sender_addr_2, "ujunox");
+    let res = await client.getBalance(sender_addr, "ujunox");
 
     console.log("RES: ", res);
   }).timeout(50000);
@@ -134,9 +116,9 @@ describe("CosmWasm Tests", () => {
 
     let res = await client.instantiate(
       sender_addr,
-      865,
-      { minter: sender_addr, name: "Killer Bees", symbol: "KB" },
-      "cw721_contract_kb",
+      1269,
+      { minter: sender_addr, name: "Playful Ponies", symbol: "PP" },
+      "cw721_contract_pp",
       "auto",
       { admin: sender_addr }
     );
@@ -159,9 +141,9 @@ describe("CosmWasm Tests", () => {
 
     let res = await client.instantiate(
       sender_addr,
-      866,
+      1270,
       { admin: sender_addr },
-      "nft_wallet_contract",
+      "nft_wallet_contract_v1",
       "auto"
     );
 
@@ -187,7 +169,7 @@ describe("CosmWasm Tests", () => {
       {
         mint: {
           owner: sender_addr,
-          token_id: "KB #1",
+          token_id: "PP #1",
           token_uri:
             "ipfs://bafybeigdhq65nokojd6n556gv4vcwsyejqlz23n6jzkvvfr465iezywvai/galaxyHL37B8/1",
         },
@@ -217,7 +199,7 @@ describe("CosmWasm Tests", () => {
       {
         mint: {
           owner: sender_addr,
-          token_id: "KB #2",
+          token_id: "PP #2",
           token_uri:
             "ipfs://bafybeigdhq65nokojd6n556gv4vcwsyejqlz23n6jzkvvfr465iezywvai/galaxyHL37B8/2",
         },
@@ -258,7 +240,7 @@ describe("CosmWasm Tests", () => {
     console.log("RES: ", res);
   }).timeout(50000);
 
-  xit("Deposit NFT #1 to nft wallet", async () => {
+  it("Deposit NFT #1 to nft wallet", async () => {
     let gas = GasPrice.fromString("0.025ujunox");
 
     const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
@@ -283,7 +265,7 @@ describe("CosmWasm Tests", () => {
       send_nft: {
         contract: nft_wallet_addr,
         msg: toBinary(cw721_hook_msg),
-        token_id: "KB #1",
+        token_id: "PP #2",
       },
     };
 
