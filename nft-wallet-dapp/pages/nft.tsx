@@ -1,5 +1,13 @@
 import Head from "next/head";
-import { Grid, GridItem, Text, Button, Box, Flex } from "@chakra-ui/react";
+import {
+  Grid,
+  GridItem,
+  Text,
+  Button,
+  Box,
+  Flex,
+  Image,
+} from "@chakra-ui/react";
 import React from "react";
 import HeaderComponent from "../components/react/header";
 import NavSidebar from "../components/react/nav-sidebar";
@@ -11,107 +19,64 @@ import { useWallet } from "@cosmos-kit/react";
 import { NftInfoResponse } from "../ts/Cw721.types";
 import ImageGallery from "react-image-gallery";
 
+export interface Attribute {
+  trait_type: string;
+  value: string;
+}
+
+export interface Cw721Data {
+  name: string;
+  description: string;
+  image: string;
+  dna: string;
+  edition: number;
+  date: number;
+  attributes: Attribute[];
+  compiler: string;
+}
+
 export default function Nft() {
   const [nftsInNftWallet, setNftsInNftWallet] =
     React.useState<Cw721DepositResponse | null>(null);
-  const [cw721DepositsError, setCw721DepositsError] = React.useState<
+  /*  const [cw721DepositsError, setCw721DepositsError] = React.useState<
     any | null
-  >(null);
-  const [nftTokenResponseError, setNftTokenResponseError] = React.useState<
+  >(null); */
+  /* const [nftTokenResponseError, setNftTokenResponseError] = React.useState<
     any | null
-  >(null);
+  >(null); */
+  const [asyncError, setAsyncError] = React.useState<any | null>(null);
   const [nftInfoResponses, setNftInfoResponses] = React.useState<
     NftInfoResponse[] | null
   >(null);
   const [nftUris, setNftUris] = React.useState<any[] | null>(null);
-
-  const nftWalletAddr =
-    "juno13lapqjghrr7r0h0a4jmnjxf64vr63v6kzz4mpranhclzrwnhr9psczl9yk";
-
-  const nftAddr =
-    "juno12u32yr0cnxwq7zvmy4vg6lwpmsjf23aj64x2myc426a4e4e00t6q4wpcf0";
+  const [nftVaultAddr, setNftVaultAddr] = React.useState(
+    "juno13lapqjghrr7r0h0a4jmnjxf64vr63v6kzz4mpranhclzrwnhr9psczl9yk"
+  );
+  const [nftAddr, setNftAddr] = React.useState(
+    "juno12u32yr0cnxwq7zvmy4vg6lwpmsjf23aj64x2myc426a4e4e00t6q4wpcf0"
+  );
+  const [tokenURIData, setTokenURIData] = React.useState<Cw721Data[] | null>(
+    null
+  );
 
   const walletManager = useWallet();
 
   const { getCosmWasmClient, getStargateClient, isWalletConnected, address } =
     walletManager;
 
-  /* React.useEffect(() => {
-    if (!isWalletConnected) {
-      setNftsInNftWallet(null);
-      setCw721DepositsError(null);
-      setNftTokenResponseError(null);
-      setNftInfoResponses(null);
-      setNftUris(null);
-      return;
-    }
-
-    const queryNFTVault = async () => {
-      const cwClient = await getCosmWasmClient();
-      const queryClient = new NftWalletQueryClient(cwClient, nftWalletAddr);
-
-      try {
-        let res = await queryClient.cw721Deposits({
-          address: address,
-          contract: nftAddr,
-        });
-
-        setCw721DepositsError(null);
-        setNftsInNftWallet(res);
-      } catch (error) {
-        setCw721DepositsError(error);
-      }
-    };
-
-    let newNftInfoArray: NftInfoResponse[] = [];
-
-    const queryNftInfo = async (tokenId: string) => {
-      const cwClient = await getCosmWasmClient();
-      const queryClient = new Cw721QueryClient(cwClient, nftAddr);
-
-      try {
-        let res = await queryClient.nftInfo({ tokenId: tokenId });
-
-        setNftTokenResponseError(null);
-        newNftInfoArray.push(res);
-      } catch (error) {
-        setNftTokenResponseError(error);
-      }
-    };
-
-    if (isWalletConnected) {
-      queryNFTVault();
-
-      let newArray = { ...nftsInNftWallet };
-      newArray.deposits?.forEach((dep) => {
-        queryNftInfo(dep.token_id);
-      });
-
-      setNftInfoResponses(newNftInfoArray);
-
-      let uriArray: string[] = [];
-      newNftInfoArray.forEach((info) => {
-        uriArray.push(
-          "https://ipfs.io/ipfs/" + info.token_uri?.split("//").slice(1)
-        );
-      });
-      setNftUris(uriArray);
-    }
-  }, [isWalletConnected]); */
-
   React.useEffect(() => {
     if (!isWalletConnected) {
-      setCw721DepositsError(null);
+      setAsyncError(null);
       setNftsInNftWallet(null);
       setNftInfoResponses(null);
-      setNftTokenResponseError(null);
+      setAsyncError(null);
       setNftUris(null);
       return;
     }
 
     const queryNFTVault = async () => {
       const cwClient = await getCosmWasmClient();
-      const queryClient = new NftWalletQueryClient(cwClient, nftWalletAddr);
+      const queryClient = new NftWalletQueryClient(cwClient, nftVaultAddr);
 
       try {
         let res = await queryClient.cw721Deposits({
@@ -119,10 +84,10 @@ export default function Nft() {
           contract: nftAddr,
         });
 
-        setCw721DepositsError(null);
+        setAsyncError(null);
         setNftsInNftWallet(res);
       } catch (error) {
-        setCw721DepositsError(error);
+        setAsyncError(error);
       }
     };
 
@@ -134,7 +99,9 @@ export default function Nft() {
   React.useEffect(() => {
     if (!isWalletConnected) {
       setNftInfoResponses(null);
-      setNftTokenResponseError(null);
+      setAsyncError(null);
+      setNftUris(null);
+      setTokenURIData(null);
       return;
     }
 
@@ -147,64 +114,51 @@ export default function Nft() {
       try {
         let res = await queryClient.nftInfo({ tokenId: tokenId });
 
-        setNftTokenResponseError(null);
         newNftInfoArray.push(res);
+
+        let uriArray = newNftInfoArray.map((info) => {
+          let combined =
+            "https://ipfs.io/ipfs/" + info.token_uri?.split("//").splice(1);
+          return combined;
+        });
+
+        setNftUris(uriArray);
+        setAsyncError(null);
       } catch (error) {
-        setNftTokenResponseError(error);
+        setAsyncError(error);
       }
     };
 
     if (isWalletConnected) {
-      let newArray = { ...nftsInNftWallet };
-      console.log("newArray: ", newArray);
-
-      newArray.deposits?.forEach((dep) => {
+      nftsInNftWallet?.deposits?.forEach((dep) => {
         queryNftInfo(dep.token_id);
       });
       setNftInfoResponses(newNftInfoArray);
-      console.log("newNftInfoArray YEAH YEAH: ", newNftInfoArray);
-
-      let thaoNation: any[] = [
-        { number: 1, name: "Touger" },
-        { number: 2, name: "Mykou" },
-        { number: 3, name: "Jazozi" },
-        { number: 4, name: "Cloem" },
-      ];
-
-      let uriArray = thaoNation.map((member) => {
-        let combined =
-          "https://ipfs.io/ipfs/" + member.name.split("o").splice(1);
-        console.log("combined: ", combined);
-        return combined;
-      });
-
-      /*       let uriArray = newNftInfoArray.map((info) => {
-        let combined =
-          "https://ipfs.io/ipfs/" + info.token_uri?.split("//").splice(1);
-        return combined;
-      }); */
-
-      console.log("uriArray: ", uriArray);
-      setNftUris(uriArray);
     }
   }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected]);
 
-  /* React.useEffect(() => {
-    if (!isWalletConnected) {
-      setNftUris(null);
-      return;
-    }
+  React.useEffect(() => {
+    let cw721MetadataArray: Cw721Data[] = [];
 
-    if (nftInfoResponses) {
-      let uriArray: string[] = [];
-      nftInfoResponses.forEach((info) => {
-        uriArray.push(
-          "https://ipfs.io/ipfs/" + info.token_uri?.split("//").slice(1)
-        );
+    const getTokenInfoData = async (url: string) => {
+      try {
+        let response = await fetch(url);
+        let result = await response.json();
+        cw721MetadataArray.push(result);
+        setAsyncError(null);
+      } catch (error) {
+        setAsyncError(error);
+      }
+    };
+
+    if (isWalletConnected && nftUris) {
+      nftUris.forEach((uri) => {
+        getTokenInfoData(uri);
       });
-      setNftUris(uriArray);
+      console.log("cw721MetadataArray: ", cw721MetadataArray);
+      setTokenURIData(cw721MetadataArray);
     }
-  }, [isWalletConnected, nftInfoResponses]); */
+  }, [isWalletConnected, nftUris]);
 
   const handleClick = () => {
     if (nftInfoResponses) {
@@ -213,42 +167,25 @@ export default function Nft() {
     if (nftUris) {
       console.log("nftUris: ", nftUris);
     }
-  };
 
-  const getTokenURIData = async (link: string) => {
-    let response = await fetch(link);
-    console.log(response.status); // 200
-    console.log(response.statusText); // OK
-
-    let data = await response.json();
-
-    console.log("DATA: ", data);
-  };
-
-  const getTokenInfo = () => {
-    if (nftInfoResponses) {
-      let uriArray: string[] = [];
-      nftInfoResponses.forEach((info) => {
-        uriArray.push(
-          "https://ipfs.io/ipfs/" + info.token_uri?.split("//").slice(1)
-        );
-      });
-      console.log("nft URI Array: ", uriArray);
-      /*  setNftUris(uriArray); */
-
-      /*getTokenURIData(goodURL);*/
+    if (tokenURIData) {
+      console.log("tokenURIData: ", tokenURIData);
     }
   };
 
-  const images = [
+  const createVault = () => {
+    console.log("creating vault");
+  };
+
+  /*   const images = [
     {
       original:
         "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/1.png",
       thumbnail:
         "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/1.png",
-      /* originalTitle: "PP #1",
+       originalTitle: "PP #1",
       thumbnailTitle: "PP #1",
-      thumbnailLabel: "PP #1", */
+      thumbnailLabel: "PP #1",
       description: "Playful Pony #1",
     },
     {
@@ -256,12 +193,18 @@ export default function Nft() {
         "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/2.png",
       thumbnail:
         "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/2.png",
-      /* originalTitle: "PP #2",
+       originalTitle: "PP #2",
       thumbnailTitle: "PP #2",
-      thumbnailLabel: "PP #2", */
+      thumbnailLabel: "PP #2",
       description: "Playful Pony #2",
     },
-  ];
+  ]; */
+
+  const nftImagesElement = tokenURIData?.map((uri) => {
+    <Box key={uri.dna} boxSize="sm">
+      <Image src={uri.image} alt={uri.name}></Image>
+    </Box>;
+  });
 
   return (
     <>
@@ -289,34 +232,33 @@ export default function Nft() {
         <GridItem bg="#415A77" area={"main"} px="14" pt="10">
           <MainHeader />
 
-          {/*  <Flex justifyContent="center">
-            <Box width="500px">
-              <ImageGallery items={images} />
-            </Box>
+          <Flex justifyContent="center">
+            <Box width="550px" bgColor="lightgray"></Box>
           </Flex>
- */}
-          <Button width="200px" onClick={handleClick}>
-            Get Console Log
-          </Button>
-          <br />
-          <br />
-          <Button width="200px" onClick={getTokenInfo}>
-            Get Token Info
-          </Button>
-          <br />
-          <br />
-          <Box width="800px">
-            {nftInfoResponses && (
-              <Text textColor="white">{JSON.stringify(nftInfoResponses)}</Text>
+
+          <Flex flexDir="column" mt="8" width="300px">
+            <Button onClick={handleClick}>Console Log</Button>
+          </Flex>
+          <Flex flexDir="column" mt="8" width="600px">
+            {isWalletConnected && (
+              <Text textColor="white">{JSON.stringify(tokenURIData)}</Text>
             )}
-            {nftUris && (
-              <Text textColor="white">{JSON.stringify(nftUris)}</Text>
-            )}
-          </Box>
+          </Flex>
         </GridItem>
 
         <GridItem bg="#415A77" area={"footer"}></GridItem>
       </Grid>
     </>
   );
+}
+
+{
+  /* <Text textColor="white" fontWeight="medium" mb="4">
+              The NFT Vault is the best place to store your NFTs. You can
+              deposit and withdraw your NFTs at anytime. Interested parties can
+              bid on your NFTs right in the vault. You have complete control.
+            </Text>
+            <Button width="200px" onClick={createVault} mb="8">
+              Create NFT Vault
+            </Button> */
 }

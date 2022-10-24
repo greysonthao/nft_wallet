@@ -180,7 +180,7 @@ describe("CosmWasm Tests", () => {
     console.log("RES: ", res);
   }).timeout(50000);
 
-  xit("Mint 2nd NFT on nft contract for sender 1", async () => {
+  xit("Mint 3rd NFT on nft contract for sender 1", async () => {
     let gas = GasPrice.fromString("0.025ujunox");
 
     const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
@@ -199,9 +199,9 @@ describe("CosmWasm Tests", () => {
       {
         mint: {
           owner: sender_addr,
-          token_id: "PP #2",
+          token_id: "PP #3",
           token_uri:
-            "ipfs://bafybeigdhq65nokojd6n556gv4vcwsyejqlz23n6jzkvvfr465iezywvai/galaxyHL37B8/2",
+            "ipfs://bafybeigdhq65nokojd6n556gv4vcwsyejqlz23n6jzkvvfr465iezywvai/galaxyHL37B8/3",
         },
       },
       "auto"
@@ -265,7 +265,7 @@ describe("CosmWasm Tests", () => {
       send_nft: {
         contract: nft_wallet_addr,
         msg: toBinary(cw721_hook_msg),
-        token_id: "PP #2",
+        token_id: "PP #3",
       },
     };
 
