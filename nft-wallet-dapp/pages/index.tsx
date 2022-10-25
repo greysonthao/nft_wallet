@@ -136,7 +136,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Jagwire Wallet: Home</title>
+        <title>Jagwire: Wallet</title>
         <meta name="description" content="The cosmic NFT super wallet" />
         <link rel="icon" href="/favicon.ico" />
       </Head>

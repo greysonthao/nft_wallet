@@ -7,6 +7,12 @@ import {
   Box,
   Flex,
   Image,
+  CircularProgress,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
 } from "@chakra-ui/react";
 import React from "react";
 import HeaderComponent from "../components/react/header";
@@ -17,7 +23,7 @@ import { Cw721QueryClient, Cw721Client } from "../ts/Cw721.client";
 import { Cw721DepositResponse } from "../ts/NftWallet.types";
 import { useWallet } from "@cosmos-kit/react";
 import { NftInfoResponse } from "../ts/Cw721.types";
-import ImageGallery from "react-image-gallery";
+import NftCard from "../components/react/nft-card";
 
 export interface Attribute {
   trait_type: string;
@@ -107,6 +113,26 @@ export default function Nft() {
 
     let newNftInfoArray: NftInfoResponse[] = [];
 
+    let cw721MetadataArray: Cw721Data[] = [];
+
+    //let uriArray: string[] = [];
+
+    const getTokenInfoData = async (url: string) => {
+      try {
+        let response = await fetch(url);
+        let result = await response.json();
+
+        let newResult = {
+          ...result,
+          image: "https://ipfs.io/ipfs/" + result.image.split("//").splice(1),
+        };
+        cw721MetadataArray.push(newResult);
+        setAsyncError(null);
+      } catch (error) {
+        setAsyncError(error);
+      }
+    };
+
     const queryNftInfo = async (tokenId: string) => {
       const cwClient = await getCosmWasmClient();
       const queryClient = new Cw721QueryClient(cwClient, nftAddr);
@@ -116,14 +142,19 @@ export default function Nft() {
 
         newNftInfoArray.push(res);
 
+        let combined = "";
+
         let uriArray = newNftInfoArray.map((info) => {
-          let combined =
+          combined =
             "https://ipfs.io/ipfs/" + info.token_uri?.split("//").splice(1);
+
           return combined;
         });
 
+        getTokenInfoData(combined);
         setNftUris(uriArray);
         setAsyncError(null);
+        console.log("newNftInfoArray: ", newNftInfoArray);
       } catch (error) {
         setAsyncError(error);
       }
@@ -134,31 +165,10 @@ export default function Nft() {
         queryNftInfo(dep.token_id);
       });
       setNftInfoResponses(newNftInfoArray);
-    }
-  }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected]);
 
-  React.useEffect(() => {
-    let cw721MetadataArray: Cw721Data[] = [];
-
-    const getTokenInfoData = async (url: string) => {
-      try {
-        let response = await fetch(url);
-        let result = await response.json();
-        cw721MetadataArray.push(result);
-        setAsyncError(null);
-      } catch (error) {
-        setAsyncError(error);
-      }
-    };
-
-    if (isWalletConnected && nftUris) {
-      nftUris.forEach((uri) => {
-        getTokenInfoData(uri);
-      });
-      console.log("cw721MetadataArray: ", cw721MetadataArray);
       setTokenURIData(cw721MetadataArray);
     }
-  }, [isWalletConnected, nftUris]);
+  }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected]);
 
   const handleClick = () => {
     if (nftInfoResponses) {
@@ -177,39 +187,46 @@ export default function Nft() {
     console.log("creating vault");
   };
 
-  /*   const images = [
-    {
-      original:
-        "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/1.png",
-      thumbnail:
-        "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/1.png",
-       originalTitle: "PP #1",
-      thumbnailTitle: "PP #1",
-      thumbnailLabel: "PP #1",
-      description: "Playful Pony #1",
-    },
-    {
-      original:
-        "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/2.png",
-      thumbnail:
-        "https://ipfs.io/ipfs/bafybeidelzqbvonbzunfmpr7szhjmtzq6biupkd6hyenm3g4qb3n2lsgvy/images/2.png",
-       originalTitle: "PP #2",
-      thumbnailTitle: "PP #2",
-      thumbnailLabel: "PP #2",
-      description: "Playful Pony #2",
-    },
-  ]; */
-
   const nftImagesElement = tokenURIData?.map((uri) => {
-    <Box key={uri.dna} boxSize="sm">
-      <Image src={uri.image} alt={uri.name}></Image>
-    </Box>;
+    return (
+      <NftCard
+        key={uri.dna}
+        nftName={uri.name}
+        imageUrl={uri.image}
+        attributes={uri.attributes}
+      />
+    );
+  });
+
+  const nftImage = tokenURIData?.map((thing) => {
+    return (
+      <Flex
+        key={thing.dna}
+        mr="6"
+        width="250px"
+        flexDir="column"
+        bgColor="white"
+        p="3"
+        borderRadius="4"
+        border="1px"
+      >
+        <Image src={thing.image} alt={thing.name}></Image>
+        <Flex alignItems="center" mt="2" justifyContent="space-between">
+          <Text textColor="black" fontFamily="Helvetica" fontSize="sm">
+            {thing.name}
+          </Text>
+          <Button fontSize="sm" px="2" bgColor="#415A77" textColor="white">
+            Attributes
+          </Button>
+        </Flex>
+      </Flex>
+    );
   });
 
   return (
     <>
       <Head>
-        <title>Jagwire Wallet: NFTs</title>
+        <title>Jagwire: NFT Vault</title>
         <meta name="description" content="The cosmic NFT super wallet" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -231,19 +248,53 @@ export default function Nft() {
 
         <GridItem bg="#415A77" area={"main"} px="14" pt="10">
           <MainHeader />
+          <Tabs variant="enclosed" bgColor="white" borderRadius="8" mt="8">
+            <TabList>
+              <Tab fontWeight="bold">NFTs</Tab>
+              <Tab fontWeight="bold">Deposit</Tab>
+              <Tab fontWeight="bold">Withdraw</Tab>
+              <Tab fontWeight="bold">Bid</Tab>
+            </TabList>
+            <TabPanels>
+              <TabPanel>
+                <Flex mt="2">
+                  <Flex>{nftImage}</Flex>
+                </Flex>
+              </TabPanel>
+              <TabPanel>
+                <p>two!</p>
+              </TabPanel>
+              <TabPanel>
+                <p>three!</p>
+              </TabPanel>
+              <TabPanel>
+                <p>four!</p>
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
 
-          <Flex justifyContent="center">
-            <Box width="550px" bgColor="lightgray"></Box>
-          </Flex>
+          {/* <Flex mt="8">
+            {tokenURIData && (
+              <Box
+                width="215px"
+                height="270px"
+                bgColor="white"
+                justifyContent="center"
+              >
+                {nftImagesElement}
+              </Box>
+            )}
+          </Flex> */}
 
-          <Flex flexDir="column" mt="8" width="300px">
-            <Button onClick={handleClick}>Console Log</Button>
-          </Flex>
-          <Flex flexDir="column" mt="8" width="600px">
-            {isWalletConnected && (
+          <Flex flexDir="column" mt="8" width="300px"></Flex>
+
+          {/* <Flex flexDir="column" mt="8" width="600px">
+            {!tokenURIData ? (
+              <CircularProgress isIndeterminate color="green.300" />
+            ) : (
               <Text textColor="white">{JSON.stringify(tokenURIData)}</Text>
             )}
-          </Flex>
+          </Flex> */}
         </GridItem>
 
         <GridItem bg="#415A77" area={"footer"}></GridItem>
