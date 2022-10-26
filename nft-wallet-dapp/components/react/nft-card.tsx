@@ -1,23 +1,82 @@
 import React from "react";
-import { Flex, Image, Text, Box } from "@chakra-ui/react";
+import {
+  Flex,
+  Image,
+  Text,
+  Box,
+  useDisclosure,
+  Button,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+} from "@chakra-ui/react";
+import ScrollingModal from "./scrolling-modal";
 
-export default function NftCard({ imageUrl, nftName, attributes }) {
+export default function NftCard({ metaData }) {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const btnRef = React.useRef(null);
   return (
-    <>
-      <Box width="215px" height="270px" bgColor="white" justifyContent="center">
-        <Flex
-          boxSize="sm"
-          width="215px"
-          height="215px"
-          p="3"
-          justifyContent="center"
+    <Flex
+      key={metaData.dna}
+      mr="6"
+      width="250px"
+      flexDir="column"
+      bgColor="white"
+      p="3"
+      borderRadius="4"
+      border="1px"
+    >
+      <Image src={metaData.image} alt={metaData.name}></Image>
+      <Flex alignItems="center" mt="3" justifyContent="space-between">
+        <Text textColor="black" fontFamily="Helvetica" fontSize="sm">
+          {metaData.name}
+        </Text>
+        {/* <ScrollingModal
+            isOpen={isOpen}
+            onOpen={onOpen}
+            onClose={onClose}
+            nftName={metaData.name}
+          /> */}
+
+        <Button
+          fontSize="sm"
+          px="2"
+          bgColor="#415A77"
+          textColor="white"
+          ref={btnRef}
+          onClick={onOpen}
         >
-          <Image src={imageUrl} alt={nftName} />
-          <Text textColor="white" fontWeight="light">
-            {attributes}
-          </Text>
-        </Flex>
-      </Box>
-    </>
+          Attributes
+        </Button>
+        <Modal
+          onClose={onClose}
+          finalFocusRef={btnRef}
+          isOpen={isOpen}
+          scrollBehavior="inside"
+          size="xl"
+        >
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader textColor="black">{metaData.name}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody textColor="black">
+              <Box fontSize="sm">
+                <pre>{JSON.stringify(metaData, null, 2)}</pre>
+              </Box>
+            </ModalBody>
+            <ModalFooter>
+              <Button bgColor="#415A77" onClick={onClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Flex>
+    </Flex>
   );
 }

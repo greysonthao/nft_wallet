@@ -13,6 +13,14 @@ import {
   TabPanels,
   Tab,
   TabPanel,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
 } from "@chakra-ui/react";
 import React from "react";
 import HeaderComponent from "../components/react/header";
@@ -24,6 +32,7 @@ import { Cw721DepositResponse } from "../ts/NftWallet.types";
 import { useWallet } from "@cosmos-kit/react";
 import { NftInfoResponse } from "../ts/Cw721.types";
 import NftCard from "../components/react/nft-card";
+import ScrollingModal from "../components/react/scrolling-modal";
 
 export interface Attribute {
   trait_type: string;
@@ -64,6 +73,9 @@ export default function Nft() {
   const [tokenURIData, setTokenURIData] = React.useState<Cw721Data[] | null>(
     null
   );
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const btnRef = React.useRef(null);
 
   const walletManager = useWallet();
 
@@ -127,6 +139,7 @@ export default function Nft() {
           image: "https://ipfs.io/ipfs/" + result.image.split("//").splice(1),
         };
         cw721MetadataArray.push(newResult);
+
         setAsyncError(null);
       } catch (error) {
         setAsyncError(error);
@@ -153,20 +166,25 @@ export default function Nft() {
 
         getTokenInfoData(combined);
         setNftUris(uriArray);
+        setTokenURIData(cw721MetadataArray);
         setAsyncError(null);
-        console.log("newNftInfoArray: ", newNftInfoArray);
       } catch (error) {
         setAsyncError(error);
       }
     };
 
-    if (isWalletConnected) {
+    const runFunctions = async () => {
       nftsInNftWallet?.deposits?.forEach((dep) => {
         queryNftInfo(dep.token_id);
       });
       setNftInfoResponses(newNftInfoArray);
 
-      setTokenURIData(cw721MetadataArray);
+      /*       setTokenURIData(cw721MetadataArray);
+       */ console.log("cw721MetadataArray: ", cw721MetadataArray);
+    };
+
+    if (isWalletConnected) {
+      runFunctions();
     }
   }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected]);
 
@@ -187,21 +205,14 @@ export default function Nft() {
     console.log("creating vault");
   };
 
-  const nftImagesElement = tokenURIData?.map((uri) => {
-    return (
-      <NftCard
-        key={uri.dna}
-        nftName={uri.name}
-        imageUrl={uri.image}
-        attributes={uri.attributes}
-      />
-    );
+  const nftImagesElement = tokenURIData?.map((metaData) => {
+    return <NftCard key={metaData.dna} metaData={metaData} />;
   });
 
-  const nftImage = tokenURIData?.map((thing) => {
+  const nftImage = tokenURIData?.map((metaData) => {
     return (
       <Flex
-        key={thing.dna}
+        key={metaData.dna}
         mr="6"
         width="250px"
         flexDir="column"
@@ -210,14 +221,42 @@ export default function Nft() {
         borderRadius="4"
         border="1px"
       >
-        <Image src={thing.image} alt={thing.name}></Image>
-        <Flex alignItems="center" mt="2" justifyContent="space-between">
+        <Image src={metaData.image} alt={metaData.name}></Image>
+        <Flex alignItems="center" mt="3" justifyContent="space-between">
           <Text textColor="black" fontFamily="Helvetica" fontSize="sm">
-            {thing.name}
+            {metaData.name}
           </Text>
-          <Button fontSize="sm" px="2" bgColor="#415A77" textColor="white">
+          <Button
+            fontSize="sm"
+            px="2"
+            bgColor="#415A77"
+            textColor="white"
+            ref={btnRef}
+            onClick={onOpen}
+          >
             Attributes
           </Button>
+          <Modal
+            onClose={onClose}
+            finalFocusRef={btnRef}
+            isOpen={isOpen}
+            scrollBehavior="inside"
+            size="xl"
+          >
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader textColor="black">{metaData.name}</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody textColor="black">
+                <Box fontSize="sm">
+                  <pre>{JSON.stringify(metaData, null, 2)}</pre>
+                </Box>
+              </ModalBody>
+              <ModalFooter>
+                <Button onClick={onClose}>Close</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         </Flex>
       </Flex>
     );
@@ -258,7 +297,7 @@ export default function Nft() {
             <TabPanels>
               <TabPanel>
                 <Flex mt="2">
-                  <Flex>{nftImage}</Flex>
+                  <Flex>{nftImagesElement}</Flex>
                 </Flex>
               </TabPanel>
               <TabPanel>
@@ -272,19 +311,6 @@ export default function Nft() {
               </TabPanel>
             </TabPanels>
           </Tabs>
-
-          {/* <Flex mt="8">
-            {tokenURIData && (
-              <Box
-                width="215px"
-                height="270px"
-                bgColor="white"
-                justifyContent="center"
-              >
-                {nftImagesElement}
-              </Box>
-            )}
-          </Flex> */}
 
           <Flex flexDir="column" mt="8" width="300px"></Flex>
 
