@@ -21,6 +21,12 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  FormHelperText,
+  Input,
+  useToast,
 } from "@chakra-ui/react";
 import React from "react";
 import HeaderComponent from "../components/react/header";
@@ -32,7 +38,9 @@ import { Cw721DepositResponse } from "../ts/NftWallet.types";
 import { useWallet } from "@cosmos-kit/react";
 import { NftInfoResponse } from "../ts/Cw721.types";
 import NftCard from "../components/react/nft-card";
-import ScrollingModal from "../components/react/scrolling-modal";
+import { ArrowForwardIcon } from "@chakra-ui/icons";
+import { coin, GasPrice } from "@cosmjs/stargate";
+import { toBinary } from "@cosmjs/cosmwasm-stargate";
 
 export interface Attribute {
   trait_type: string;
@@ -75,9 +83,34 @@ export default function Nft() {
   );
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  const [nftAddressInput, setNftAddressInput] = React.useState(
+    "NFT Contract Address"
+  );
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleNftAddressInputChange = (e) => setNftAddressInput(e.target.value);
+
+  const isErrorNftAddrInput = nftAddressInput === "";
+
+  const [tokenIdInput, setTokenIdInput] = React.useState("Token ID");
+
+  const handleTokenIdInputChange = (e) => setTokenIdInput(e.target.value);
+
+  const isErrorTokenIdInput = tokenIdInput === "";
+
+  const [askingPriceInput, setAskingPrice] = React.useState(1);
+
+  const handleAskingPriceInputChange = (e) => setAskingPrice(e.target.value);
+
+  const [tx, setTx] = React.useState<any>(null);
+
+  const isErrorAskingPriceInput = !askingPriceInput;
+
   const btnRef = React.useRef(null);
 
   const walletManager = useWallet();
+
+  const toast = useToast();
 
   const { getCosmWasmClient, getStargateClient, isWalletConnected, address } =
     walletManager;
@@ -89,10 +122,12 @@ export default function Nft() {
       setNftInfoResponses(null);
       setAsyncError(null);
       setNftUris(null);
+      setIsLoading(false);
       return;
     }
 
     const queryNFTVault = async () => {
+      setIsLoading(true);
       const cwClient = await getCosmWasmClient();
       const queryClient = new NftWalletQueryClient(cwClient, nftVaultAddr);
 
@@ -111,6 +146,7 @@ export default function Nft() {
 
     if (isWalletConnected) {
       queryNFTVault();
+      setIsLoading(false);
     }
   }, [address, getCosmWasmClient, isWalletConnected]);
 
@@ -120,6 +156,7 @@ export default function Nft() {
       setAsyncError(null);
       setNftUris(null);
       setTokenURIData(null);
+      setIsLoading(false);
       return;
     }
 
@@ -139,7 +176,7 @@ export default function Nft() {
           image: "https://ipfs.io/ipfs/" + result.image.split("//").splice(1),
         };
         cw721MetadataArray.push(newResult);
-
+        setTokenURIData(cw721MetadataArray);
         setAsyncError(null);
       } catch (error) {
         setAsyncError(error);
@@ -147,6 +184,7 @@ export default function Nft() {
     };
 
     const queryNftInfo = async (tokenId: string) => {
+      setIsLoading(true);
       const cwClient = await getCosmWasmClient();
       const queryClient = new Cw721QueryClient(cwClient, nftAddr);
 
@@ -166,7 +204,7 @@ export default function Nft() {
 
         getTokenInfoData(combined);
         setNftUris(uriArray);
-        setTokenURIData(cw721MetadataArray);
+        //setTokenURIData(cw721MetadataArray);
         setAsyncError(null);
       } catch (error) {
         setAsyncError(error);
@@ -178,6 +216,7 @@ export default function Nft() {
         queryNftInfo(dep.token_id);
       });
       setNftInfoResponses(newNftInfoArray);
+      setIsLoading(false);
 
       /*       setTokenURIData(cw721MetadataArray);
        */ console.log("cw721MetadataArray: ", cw721MetadataArray);
@@ -186,7 +225,7 @@ export default function Nft() {
     if (isWalletConnected) {
       runFunctions();
     }
-  }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected]);
+  }, [nftsInNftWallet, getCosmWasmClient, isWalletConnected, nftAddr]);
 
   const handleClick = () => {
     if (nftInfoResponses) {
@@ -201,65 +240,139 @@ export default function Nft() {
     }
   };
 
-  const createVault = () => {
-    console.log("creating vault");
+  const handleNftDeposit = async () => {
+    if (!isWalletConnected) {
+      console.log("WALLET IS NOT CONNECTED");
+      return;
+    }
+
+    setTx(null);
+    onOpen();
+    setIsLoading(true);
+
+    //let gas = GasPrice.fromString("0.025ujunox");
+
+    try {
+      const cwClient = await getCosmWasmClient();
+
+      console.log("cwClient: ", cwClient);
+
+      const signingClient = new Cw721Client(cwClient, address, nftAddressInput);
+
+      console.log("signingClient: ", signingClient);
+
+      let ask = coin(askingPriceInput * 1000000, "ujunox");
+
+      let cw721_hook_msg = {
+        deposit: {
+          ask: ask,
+        },
+      };
+
+      /*    let msg = {
+        send_nft: {
+          contract: nftAddressInput,
+          msg: toBinary(cw721_hook_msg),
+          token_id: tokenIdInput,
+        },
+      }; */
+
+      let tx = await signingClient.sendNft(
+        {
+          contract: nftVaultAddr,
+          msg: toBinary(cw721_hook_msg),
+          tokenId: tokenIdInput,
+        },
+        "auto"
+      );
+
+      toast({
+        title: `Transaction successful.`,
+        position: "top",
+        status: "success",
+        isClosable: true,
+      });
+
+      console.log("transaction events: ", tx.logs[0].events);
+
+      setTx(tx);
+      onClose();
+      setIsLoading(false);
+      setAsyncError(null);
+      setNftAddressInput("Nft Contract Address");
+      setTokenIdInput("Token ID");
+      setAskingPrice(1);
+    } catch (error) {
+      toast({
+        title: `Transaction failed.`,
+        position: "top",
+        status: "error",
+        isClosable: true,
+      });
+      console.log("ERROR: ", error);
+      setIsLoading(false);
+      setAsyncError(error);
+    }
+  };
+
+  const handleNftWithdraw = async () => {
+    if (!isWalletConnected) {
+      console.log("WALLET IS NOT CONNECTED");
+      return;
+    }
+    setTx(null);
+    onOpen();
+    setIsLoading(true);
+
+    //let gas = GasPrice.fromString("0.025ujunox");
+
+    try {
+      const cwClient = await getCosmWasmClient();
+      console.log("cwClient: ", cwClient);
+
+      const signingClient = new NftWalletClient(
+        cwClient,
+        address,
+        nftVaultAddr
+      );
+
+      let tx = await signingClient.withdrawNft(
+        {
+          contract: nftAddressInput,
+          tokenId: tokenIdInput,
+        },
+        "auto"
+      );
+
+      toast({
+        title: `Transaction successful.`,
+        position: "top",
+        status: "success",
+        isClosable: true,
+      });
+
+      setTx(tx);
+      onClose();
+      setIsLoading(false);
+      setAsyncError(null);
+      setNftAddressInput("Nft Contract Address");
+      setTokenIdInput("Token ID");
+      setAskingPrice(1);
+    } catch (error) {
+      toast({
+        title: `Transaction failed.`,
+        position: "top",
+        status: "error",
+        isClosable: true,
+      });
+      console.log("ERROR: ", error);
+      setIsLoading(false);
+      setAsyncError(error);
+    }
   };
 
   const nftImagesElement = tokenURIData?.map((metaData) => {
     return <NftCard key={metaData.dna} metaData={metaData} />;
-  });
-
-  const nftImage = tokenURIData?.map((metaData) => {
-    return (
-      <Flex
-        key={metaData.dna}
-        mr="6"
-        width="250px"
-        flexDir="column"
-        bgColor="white"
-        p="3"
-        borderRadius="4"
-        border="1px"
-      >
-        <Image src={metaData.image} alt={metaData.name}></Image>
-        <Flex alignItems="center" mt="3" justifyContent="space-between">
-          <Text textColor="black" fontFamily="Helvetica" fontSize="sm">
-            {metaData.name}
-          </Text>
-          <Button
-            fontSize="sm"
-            px="2"
-            bgColor="#415A77"
-            textColor="white"
-            ref={btnRef}
-            onClick={onOpen}
-          >
-            Attributes
-          </Button>
-          <Modal
-            onClose={onClose}
-            finalFocusRef={btnRef}
-            isOpen={isOpen}
-            scrollBehavior="inside"
-            size="xl"
-          >
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader textColor="black">{metaData.name}</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody textColor="black">
-                <Box fontSize="sm">
-                  <pre>{JSON.stringify(metaData, null, 2)}</pre>
-                </Box>
-              </ModalBody>
-              <ModalFooter>
-                <Button onClick={onClose}>Close</Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        </Flex>
-      </Flex>
-    );
   });
 
   return (
@@ -287,24 +400,172 @@ export default function Nft() {
 
         <GridItem bg="#415A77" area={"main"} px="14" pt="10">
           <MainHeader />
-          <Tabs variant="enclosed" bgColor="white" borderRadius="8" mt="8">
+          <Tabs variant="enclosed" bgColor="#0D1B2A" borderRadius="8" mt="8">
             <TabList>
-              <Tab fontWeight="bold">NFTs</Tab>
-              <Tab fontWeight="bold">Deposit</Tab>
-              <Tab fontWeight="bold">Withdraw</Tab>
-              <Tab fontWeight="bold">Bid</Tab>
+              <Tab fontWeight="bold" textColor="white">
+                NFTs
+              </Tab>
+              <Tab fontWeight="bold" textColor="white">
+                Deposit
+              </Tab>
+              <Tab fontWeight="bold" textColor="white">
+                Withdraw
+              </Tab>
+              <Tab fontWeight="bold" textColor="white">
+                Bid
+              </Tab>
             </TabList>
             <TabPanels>
               <TabPanel>
                 <Flex mt="2">
-                  <Flex>{nftImagesElement}</Flex>
+                  {isLoading && (
+                    <Flex justifyContent="center">
+                      <CircularProgress fontSize="5xl" />
+                    </Flex>
+                  )}
+                  {!nftsInNftWallet && isWalletConnected && (
+                    <Text textColor="white" my="4" animation="ease-in">
+                      There are no NFTs in the Vault.
+                    </Text>
+                  )}
+                  {!isWalletConnected && (
+                    <Text textColor="white" my="4">
+                      Please connect your wallet.
+                    </Text>
+                  )}
+                  {tokenURIData && isWalletConnected && (
+                    <Flex>{nftImagesElement}</Flex>
+                  )}
                 </Flex>
               </TabPanel>
               <TabPanel>
-                <p>two!</p>
+                <Flex my="2" textColor="white">
+                  <Text fontSize="l">Deposit Your NFTs into the Vault</Text>
+                </Flex>
+                <Box textColor="white" px="16">
+                  <FormControl isInvalid={isErrorNftAddrInput} mt="8">
+                    {/* <FormLabel>NFT Contract Address</FormLabel> */}
+                    <Input
+                      type="text"
+                      value={nftAddressInput}
+                      onChange={handleNftAddressInputChange}
+                      bgColor="white"
+                      textColor="black"
+                    />
+                    {!isErrorNftAddrInput ? (
+                      <FormHelperText textColor="white">
+                        Enter the contract address for the NFT
+                      </FormHelperText>
+                    ) : (
+                      <FormErrorMessage>
+                        NFT contract address is required.
+                      </FormErrorMessage>
+                    )}
+                  </FormControl>
+                  <FormControl isInvalid={isErrorTokenIdInput} mt="6">
+                    {/* <FormLabel>Token Id</FormLabel> */}
+                    <Input
+                      type="text"
+                      value={tokenIdInput}
+                      onChange={handleTokenIdInputChange}
+                      bgColor="white"
+                      textColor="black"
+                    />
+                    {!isErrorTokenIdInput ? (
+                      <FormHelperText textColor="white">
+                        Enter the Token Id for the NFT
+                      </FormHelperText>
+                    ) : (
+                      <FormErrorMessage>Token Id is required.</FormErrorMessage>
+                    )}
+                  </FormControl>
+                  <FormControl isInvalid={isErrorAskingPriceInput} mt="6">
+                    {/* <FormLabel>Asking Price</FormLabel> */}
+                    <Input
+                      type="number"
+                      value={askingPriceInput}
+                      onChange={handleAskingPriceInputChange}
+                      bgColor="white"
+                      textColor="black"
+                    />
+                    {!isErrorAskingPriceInput ? (
+                      <FormHelperText textColor="white">
+                        Enter your Asking Price in JUNO for the NFT
+                      </FormHelperText>
+                    ) : (
+                      <FormErrorMessage>
+                        Asking Price is required.
+                      </FormErrorMessage>
+                    )}
+                  </FormControl>
+                  <Flex justifyContent="center">
+                    <Button
+                      my="14"
+                      rightIcon={<ArrowForwardIcon />}
+                      colorScheme="gray"
+                      variant="outline"
+                      _hover={{ bgColor: "white", textColor: "black" }}
+                      onClick={handleNftDeposit}
+                    >
+                      Deposit
+                    </Button>
+                  </Flex>
+                </Box>
               </TabPanel>
               <TabPanel>
-                <p>three!</p>
+                <Flex my="2" textColor="white">
+                  <Text fontSize="l">Withdraw Your NFTs from the Vault</Text>
+                </Flex>
+                <Box textColor="white" px="16">
+                  <FormControl isInvalid={isErrorNftAddrInput} mt="8">
+                    {/* <FormLabel>NFT Contract Address</FormLabel> */}
+                    <Input
+                      type="text"
+                      value={nftAddressInput}
+                      onChange={handleNftAddressInputChange}
+                      bgColor="white"
+                      textColor="black"
+                    />
+                    {!isErrorNftAddrInput ? (
+                      <FormHelperText textColor="white">
+                        Enter the contract address for the NFT
+                      </FormHelperText>
+                    ) : (
+                      <FormErrorMessage>
+                        NFT contract address is required.
+                      </FormErrorMessage>
+                    )}
+                  </FormControl>
+                  <FormControl isInvalid={isErrorTokenIdInput} mt="6">
+                    {/* <FormLabel>Token Id</FormLabel> */}
+                    <Input
+                      type="text"
+                      value={tokenIdInput}
+                      onChange={handleTokenIdInputChange}
+                      bgColor="white"
+                      textColor="black"
+                    />
+                    {!isErrorTokenIdInput ? (
+                      <FormHelperText textColor="white">
+                        Enter the Token Id for the NFT
+                      </FormHelperText>
+                    ) : (
+                      <FormErrorMessage>Token Id is required.</FormErrorMessage>
+                    )}
+                  </FormControl>
+                  <Flex justifyContent="center">
+                    <Button
+                      my="14"
+                      rightIcon={<ArrowForwardIcon />}
+                      colorScheme="gray"
+                      variant="outline"
+                      _hover={{ bgColor: "white", textColor: "black" }}
+                      onClick={handleNftWithdraw}
+                    >
+                      Withdraw
+                    </Button>
+                  </Flex>
+                </Box>
               </TabPanel>
               <TabPanel>
                 <p>four!</p>
@@ -312,7 +573,9 @@ export default function Nft() {
             </TabPanels>
           </Tabs>
 
-          <Flex flexDir="column" mt="8" width="300px"></Flex>
+          <Flex flexDir="column" mt="8" width="300px">
+            {/* ADD STUFF HERE */}
+          </Flex>
 
           {/* <Flex flexDir="column" mt="8" width="600px">
             {!tokenURIData ? (
@@ -325,17 +588,34 @@ export default function Nft() {
 
         <GridItem bg="#415A77" area={"footer"}></GridItem>
       </Grid>
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalCloseButton />
+          <ModalBody>
+            {isLoading && (
+              <Flex justifyContent="center" py="4">
+                <CircularProgress
+                  isIndeterminate
+                  color="#415A77"
+                  size="150px"
+                />
+              </Flex>
+            )}
+            {/*    {tx && (
+              <Box textColor="black" fontSize="x-small" py="4">
+                <pre>{JSON.stringify(tx, null, 2)}</pre>
+              </Box>
+            )}
+            {asyncError && (
+              <Box textColor="red" fontSize="x-small" py="4">
+                <pre>{JSON.stringify(asyncError, null, 2)}</pre>
+              </Box>
+            )} */}
+          </ModalBody>
+          <ModalFooter></ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
-}
-
-{
-  /* <Text textColor="white" fontWeight="medium" mb="4">
-              The NFT Vault is the best place to store your NFTs. You can
-              deposit and withdraw your NFTs at anytime. Interested parties can
-              bid on your NFTs right in the vault. You have complete control.
-            </Text>
-            <Button width="200px" onClick={createVault} mb="8">
-              Create NFT Vault
-            </Button> */
 }

@@ -115,8 +115,6 @@ export default function Home() {
       return newToken;
     });
 
-    console.log("NEW TOKENS ARRAY: ", newTokensArray);
-
     setWalletBalance(newTokensArray);
 
     //BUILD TOKENINFO THEN PUSH TO ARRAY

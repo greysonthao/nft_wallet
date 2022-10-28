@@ -240,7 +240,7 @@ describe("CosmWasm Tests", () => {
     console.log("RES: ", res);
   }).timeout(50000);
 
-  it("Deposit NFT #1 to nft wallet", async () => {
+  xit("Deposit NFT #1 to nft wallet", async () => {
     let gas = GasPrice.fromString("0.025ujunox");
 
     const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
@@ -265,11 +265,34 @@ describe("CosmWasm Tests", () => {
       send_nft: {
         contract: nft_wallet_addr,
         msg: toBinary(cw721_hook_msg),
-        token_id: "PP #3",
+        token_id: "PP #2",
       },
     };
 
     let res = await client.execute(sender_addr, nft_contract_addr, msg, "auto");
+
+    console.log("RES: ", res);
+  }).timeout(50000);
+
+  xit("Withdraw NFT #1 from nft wallet", async () => {
+    let gas = GasPrice.fromString("0.025ujunox");
+
+    const wallet = await Secp256k1HdWallet.fromMnemonic(mnemonic, {
+      prefix: "juno",
+    });
+
+    const client = await SigningCosmWasmClient.connectWithSigner(
+      rpcEndpoint,
+      wallet,
+      { gasPrice: gas }
+    );
+
+    let res = await client.execute(
+      sender_addr,
+      nft_wallet_addr,
+      { withdraw_nft: { contract: nft_contract_addr, token_id: "PP #3" } },
+      "auto"
+    );
 
     console.log("RES: ", res);
   }).timeout(50000);
